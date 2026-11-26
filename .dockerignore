@@ -1,5 +1,7 @@
+
 .git
 .gitignore
+
 .env
 .env.*
 !.env.example
@@ -7,7 +9,13 @@
 node_modules
 vendor
 
+database/*.sqlite
+
+public/hot
+public/storage
+
 storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
+storage/app/public/*

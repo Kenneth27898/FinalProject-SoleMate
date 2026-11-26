@@ -1,4 +1,7 @@
-# Install Composer dependencies
+
+# ==========================================
+# 1. Install Composer dependencies
+# ==========================================
 FROM composer:2 AS composer_stage
 
 WORKDIR /app
@@ -13,7 +16,9 @@ RUN composer install \
     --no-scripts
 
 
-# Build Vite frontend assets
+# ==========================================
+# 2. Build Vite frontend assets
+# ==========================================
 FROM node:20-alpine AS node_stage
 
 WORKDIR /app
@@ -27,7 +32,9 @@ COPY . .
 RUN npm run build
 
 
-# Main Laravel application
+# ==========================================
+# 3. Main Laravel application
+# ==========================================
 FROM php:8.2-apache
 
 WORKDIR /var/www/html
@@ -39,6 +46,7 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libicu-dev \
     libpq-dev \
+    libonig-dev \
     unzip \
     git \
     && docker-php-ext-configure gd \
@@ -58,6 +66,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Configure Apache document root
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 
 RUN sed -ri \
@@ -72,20 +81,29 @@ RUN printf '<Directory /var/www/html/public>\n\
 </Directory>\n' > /etc/apache2/conf-available/laravel.conf \
     && a2enconf laravel
 
+# Copy application source code
 COPY . .
 
+# Copy Composer dependencies
 COPY --from=composer_stage /app/vendor ./vendor
 
+# Copy compiled frontend assets
 COPY --from=node_stage /app/public/build ./public/build
 
-RUN chown -R www-data:www-data \
-    storage \
-    bootstrap/cache
-
-RUN chmod -R 775 \
-    storage \
-    bootstrap/cache
+# Prepare Laravel runtime directories and package discovery
+RUN mkdir -p \
+    storage/app/public \
+    storage/framework/cache/data \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    bootstrap/cache \
+    && php artisan package:discover --ansi \
+    && php artisan storage:link \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 80
 
+# Run migrations before starting Apache
 CMD ["sh", "-c", "php artisan migrate --force && apache2-foreground"]
