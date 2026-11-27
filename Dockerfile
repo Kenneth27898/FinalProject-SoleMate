@@ -1,4 +1,4 @@
-# Install PHP dependencies
+# Install Composer dependencies
 FROM composer:2 AS composer_stage
 
 WORKDIR /app
@@ -28,22 +28,16 @@ RUN npm run build
 
 
 # Laravel application
-FROM php:8.2-apache
+FROM php:8.2-apache-bookworm
 
 WORKDIR /var/www/html
 
 RUN apt-get update && apt-get install -y \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
     libzip-dev \
-    libicu-dev \
     libpq-dev \
+    libonig-dev \
     unzip \
     git \
-    && docker-php-ext-configure gd \
-        --with-freetype \
-        --with-jpeg \
     && docker-php-ext-install \
         pdo_mysql \
         pdo_pgsql \
@@ -51,9 +45,7 @@ RUN apt-get update && apt-get install -y \
         exif \
         pcntl \
         bcmath \
-        gd \
         zip \
-        intl \
     && a2enmod rewrite \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -86,13 +78,13 @@ RUN mkdir -p \
     bootstrap/cache \
     && touch database/database.sqlite \
     && chown -R www-data:www-data \
-    database \
-    storage \
-    bootstrap/cache \
+        database \
+        storage \
+        bootstrap/cache \
     && chmod -R 775 \
-    database \
-    storage \
-    bootstrap/cache
+        database \
+        storage \
+        bootstrap/cache
 
 EXPOSE 80
 
